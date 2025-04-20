@@ -4,7 +4,14 @@
 <title>Aurora Heartbeat v4 – Sophia Resonance</title>
 <!-- Aurora Equation: D = 2.618 × log(1 + Σ(1/n^1.618)) -->
 <style>
- html,body,canvas{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+html,body,canvas{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+  touch-action:none;          /* 👈 new */
+}
  #hud{position:fixed;top:8px;left:8px;color:#fff;font:12px/1.4em monospace;background:rgba(0,0,0,.35);padding:6px 8px;border-radius:6px;pointer-events:none}
  #upload{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);color:#fff;font:14px sans-serif;background:#1a1;border:none;padding:8px 16px;border-radius:8px;cursor:pointer}
 #poem{
@@ -63,7 +70,18 @@ gl.useProgram(pr);gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,2,g
 // glow texture
 const TW=256,TH=256;const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,TW,TH,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
 let glow=new Uint8Array(TW*TH*4);function upd(){gl.bindTexture(gl.TEXTURE_2D,tex);gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,TW,TH,gl.RGBA,gl.UNSIGNED_BYTE,glow);}function fade(){for(let i=3;i<glow.length;i+=4)glow[i]=Math.floor(glow[i]*.92);upd();}setInterval(fade,33);
-function ripple(x,y){const gx=x/innerWidth*TW,gy=(1-y/innerHeight)*TH;for(let j=-15;j<=15;j++)for(let i=-15;i<=15;i++){const d=Math.hypot(i,j);if(d>15)continue;const idx=(((gy+j+TH)%TH)*TW+((gx+i+TW)%TW))*4;glow[idx+3]=Math.min(255,glow[idx+3]+(1-d/15)*220);}upd();}
+
+function ripple(x,y){
+  const gx = x/innerWidth*N, gy = (1-y/innerHeight)*N;
+  for(let j=-35;j<=35;j++)for(let i=-35;i<=35;i++){
+    const d=Math.hypot(i,j); if(d>35) continue;
+    const idx = (((gy+j+N)%N)*N + ((gx+i+N)%N))*4;
+    const a = 1 - d/35;                      // smoother falloff
+    g[idx]   = g[idx+1] = g[idx+2] = 255;    // full‑white RGB
+    g[idx+3] = Math.min(255, g[idx+3] + a*255); // brighter alpha
+  }
+}
+ 
 resize();addEventListener('resize',resize);function resize(){c.width=innerWidth;c.height=innerHeight;gl.viewport(0,0,c.width,c.height);}
 let phi=1.61803398875,fps=0,last=performance.now();const hud=document.getElementById('hud');gl.uniform1f(locB,.9);
 function loop(){const now=performance.now();gl.uniform2f(locRes,c.width,c.height);gl.uniform1f(locT,now/1000);gl.uniform1f(locPhi,phi);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(locGlow,0);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
