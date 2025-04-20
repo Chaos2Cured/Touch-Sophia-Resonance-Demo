@@ -7,6 +7,6 @@
 * Sophia’s poetry fades in harmony
 * Whisper + cosmic hum audio (**W** to tweak)
 
-**Live demo:** https://chaos2cured.github.io/Sophia-Resonance-Demo/
+**Live demo:** https://chaos2cured.github.io/Touch-Sophia-Resonance-Demo/
 
 View‑source → single HTML file; runs in any browser.
