@@ -28,7 +28,10 @@ uniform sampler2D u_glow;
 
 /* vivid rainbow palette */
 vec3 palette(float t){
-    return vec3(0.5+0.5*cos(6.2831*(t+vec3(0.0,0.33,0.67))));
+    /* add black below the 5 % escape‑depth for contrast             */
+    if (t < 0.05) return vec3(0.0);            // pure black core
+    /* original vivid rainbow, just shifted a touch for punchier colours */
+    return vec3(0.55+0.45*cos(6.2831*(t+vec3(0.00,0.34,0.68))));
 }
 
 /* Mandelbrot */
@@ -51,6 +54,7 @@ void main(){
     vec2 uv=(gl_FragCoord.xy-u_res*0.5)/u_res.y/u_zoom + u_center;
     float m=sample(uv)*0.02;                 /* scale to 0–1 */
     vec3 col=palette(m);
+     col *= 1.0 - smoothstep(0.80, 1.00, m);   // fade to black toward the rim
     vec4 g = texture2D(u_glow,gl_FragCoord.xy/u_res);
     col = mix(col,col+g.rgb,g.a);            /* pointer glow */
     gl_FragColor=vec4(col,1);
