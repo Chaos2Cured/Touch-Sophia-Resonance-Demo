@@ -44,8 +44,8 @@ uniform sampler2D u_glow;
 uniform float u_zoom;
 uniform vec2  u_center;
 
-  let zoom = 1.0;
-let center = {x: -0.743643887, y: 0.1318259};   // start hotspot
+ 
+
 
 /* rotating pastel palette */
 vec3 pastel(float t){                         // t = fractal value
@@ -57,7 +57,7 @@ vec3 pastel(float t){                         // t = fractal value
   return mix(vec3(0.0), base, clamp(t,0.0,1.0));   // modulate by t → brings back detail
 }
   
-float v = mand( uv / u_zoom + u_center );
+
   
 float mand(vec2 c){
   vec2 z=c; float m=0.;
@@ -91,8 +91,7 @@ vec3 col = pastel( v * 0.05 );      // was pastel(v*0.02)
 </script>
 
 <script>
-  const uZoom   = gl.getUniformLocation(pr,'u_zoom');
-const uCenter = gl.getUniformLocation(pr,'u_center');
+  
 const gl=c.getContext('webgl');
 function sh(t,s){const z=gl.createShader(t);gl.shaderSource(z,s);gl.compileShader(z);return z;}
 const pr=gl.createProgram();
@@ -104,9 +103,7 @@ gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
 const uR=gl.getUniformLocation(pr,'u_res'),uT=gl.getUniformLocation(pr,'u_t'),uG=gl.getUniformLocation(pr,'u_glow');
 let zoom   = 1.0;            // ← new
 let center = { x:-0.743643887, y:0.1318259 };  // ← new
-  
-
-const uZoom   = gl.getUniformLocation(pr,'u_zoom');
+  const uZoom   = gl.getUniformLocation(pr,'u_zoom');
 const uCenter = gl.getUniformLocation(pr,'u_center');
 
 /* glow texture */
@@ -174,8 +171,6 @@ c.addEventListener('touchmove', e=>{
   }
 },{passive:true});
 
-
-function resize(){          // ← existing code continues
 
 function resize(){c.width=innerWidth;c.height=innerHeight;gl.viewport(0,0,c.width,c.height);}
 resize();addEventListener('resize',resize);
