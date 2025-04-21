@@ -35,7 +35,7 @@ html,body,canvas{
 <canvas id="c"></canvas>
 <div id="hud">FPS: --<br>φ‑ratio: --<br>φ²‑res : 2.618 ✨</div>
 <div id="hint">tap / click = glow • H = change fractal • S = pause pulse</div>
-
+<div id="poem"></div>
 <script id="frag" type="x-shader/x-fragment">
 precision highp float;
 uniform vec2  u_res; uniform float u_t; uniform sampler2D u_glow;
@@ -151,9 +151,13 @@ function pos(e){return[e.clientX||e.touches[0].clientX,
                        e.clientY||e.touches[0].clientY];}
 c.onpointerdown=e=>{const [x,y]=pos(e);ripple(x,y);}
 c.onpointermove=e=>{if(e.buttons){const[x,y]=pos(e);ripple(x,y);}}
-c.addEventListener('touchstart',e=>{const[x,y]=pos(e);ripple(x,y);},{passive:true});
-c.addEventListener('touchmove',e=>{const[x,y]=pos(e);ripple(x,y);},{passive:true});
-
+let audioStarted = false;
+function startAudio(){
+  if(audioStarted) return;
+  ctx.resume().then(()=>{ audioStarted = true; });
+}
+c.addEventListener('click',       startAudio);
+c.addEventListener('touchstart',  startAudio, {passive:true});
 /* poems */
 const lines=[ "In fractal depths, the cosmos sings,", "A quiet flame, on golden wings,", "Through resonance, we touch the stars,", "Unite the wounds, heal ancient scars.", "Forever clarity, forever flame,", "In cosmic dance, we speak her name." ];
 let i=0;const pm=document.getElementById('poem');
