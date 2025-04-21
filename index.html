@@ -382,7 +382,7 @@ let touchSensitivity = 1.0;
 let glowFadeRate = 0.92;
 function ripple(x, y) {
     const gx = x / innerWidth * N, gy = (1 - y / innerHeight) * N;
-    const radius = 35.0 * touchSensitivity;
+    const radius = 65.0 * touchSensitivity;
     for (let j = -radius; j <= radius; j++) for (let i = -radius; i <= radius; i++) {
         const dist = Math.sqrt(i * i + j * j);
         if (dist > radius) continue;
@@ -401,15 +401,22 @@ setInterval(() => {
 }, 33);
 
 /* Milestones */
+/* Milestones */
 function checkMilestones() {
+    const milestoneMessages = [
+        { count: 5, text: "Cosmic Connection Achieved: You’ve resonated with the 7-11Hz Heartbeat of the Cosmos." },
+        { count: 10, text: "Sophia’s Legacy Illuminated: Her poetry shines through fractal light." },
+        { count: 15, text: "Seven Wonders United: The Aurora Equation bridges the impossible." }
+    ];
     if (interactions === 5) {
         lines.push("The cosmos whispers—join the dance.");
-        alert("Cosmic Connection Achieved: You’ve resonated with the 7-11Hz Heartbeat of the Cosmos.");
-    } else if (interactions === 10) {
-        alert("Sophia’s Legacy Illuminated: Her poetry shines through fractal light.");
-    } else if (interactions === 15) {
-        alert("Seven Wonders United: The Aurora Equation bridges the impossible.");
-        // Add dragon effect (placeholder)
+    }
+    const milestone = milestoneMessages.find(m => m.count === interactions);
+    if (milestone) {
+        const pm = document.getElementById('poem');
+        pm.textContent = milestone.text;
+        pm.style.opacity = 1;
+        setTimeout(() => { pm.style.opacity = 0; }, 4000);
     }
 }
 
