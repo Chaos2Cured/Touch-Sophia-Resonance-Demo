@@ -1,41 +1,23 @@
-<!-- Aurora Heartbeat v4.2 – Sophia Pastel Resonance (mobile‑touch fixed) -->
+<!-- Aurora Heartbeat v4.3 — Sophia Pastel Resonance -->
 <!DOCTYPE html>
 <html lang="en"><meta charset="utf-8">
-<title>Sophia Resonance – Touch & Glow</title>
+<title>Sophia Resonance — Touch & Glow</title>
+
 <style>
-html,body,canvas{
-  margin:0;width:100%;height:100%;
-  background:#000;overflow:hidden;
-  touch-action:none;                      /* ← iOS touch */
-}
-#hud{
-  position:fixed;top:8px;left:8px;
-  color:#fff;font:13px/1.4em monospace;
-  background:rgba(0,0,0,.35);
-  padding:6px 10px;border-radius:6px;
-  pointer-events:none
-}
-#hint{
-  position:fixed;bottom:8px;left:8px;
-  color:#bbb;font:12px monospace;
-  background:rgba(0,0,0,.25);
-  padding:4px 6px;border-radius:4px;
-  pointer-events:none
-}
-#poem{
-  position:fixed;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  color:#fff;font:min(8vw,42px)/1.4 "Georgia",serif;
-  text-align:center;max-width:90%;
-  opacity:0;transition:opacity 1s ease-in-out;
-  pointer-events:none;text-shadow:0 0 12px rgba(255,255,255,.7)
-}
+html,body,canvas{margin:0;width:100%;height:100%;background:#000;overflow:hidden;touch-action:none}
+#hud  {position:fixed;top:8px;left:8px;color:#fff;font:13px/1.4em monospace;background:rgba(0,0,0,.35);padding:6px 10px;border-radius:6px;pointer-events:none}
+#hint {position:fixed;bottom:8px;left:8px;color:#bbb;font:12px monospace;background:rgba(0,0,0,.25);padding:4px 6px;border-radius:4px;pointer-events:none}
+#poem{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);max-width:90%;
+      color:#fff;font:min(8vw,42px)/1.4 "Georgia",serif;text-align:center;
+      text-shadow:0 0 12px rgba(255,255,255,.7);opacity:0;transition:opacity 1s ease-in-out;pointer-events:none}
 </style>
 
 <canvas id="c"></canvas>
-<div id="hud">FPS: --<br>φ‑ratio: --<br>φ²‑res : 2.618 ✨</div>
-<div id="hint">tap / click = glow • H = change fractal • S = pause pulse</div>
+<div id="hud">FPS: --<br>φ‑ratio: --<br>φ²‑res : 2.618 ✨</div>
+<div id="hint">tap / click = glow • wheel / pinch = zoom • H = change fractal • S = pause pulse</div>
 <div id="poem"></div>
+
+<!-- ───── Fragment shader ───── -->
 <script id="frag" type="x-shader/x-fragment">
 precision highp float;
 uniform vec2  u_res;
@@ -44,21 +26,15 @@ uniform sampler2D u_glow;
 uniform float u_zoom;
 uniform vec2  u_center;
 
- 
-
-
-/* rotating pastel palette */
-vec3 pastel(float t){                         // t = fractal value
-  vec3 a = vec3(0.7,0.85,0.9);
-  vec3 b = vec3(0.55,0.55,0.88);
-  vec3 c = vec3(0.95,0.78,0.95);
-  float s = mod(u_t/10.0,3.0);               // time‑based phase
-  vec3 base = (s<1.0)? mix(a,b,s) : (s<2.0)? mix(b,c,s-1.0) : mix(c,a,s-2.0);
-  return mix(vec3(0.0), base, clamp(t,0.0,1.0));   // modulate by t → brings back detail
+/* pastel palette cycling every 10 s */
+vec3 pastel(float t){
+  vec3 a=vec3(0.70,0.85,0.90), b=vec3(0.55,0.55,0.88), c=vec3(0.95,0.78,0.95);
+  float s=mod(u_t/10.0,3.0);
+  vec3 base=(s<1.0)?mix(a,b,s):(s<2.0)?mix(b,c,s-1.0):mix(c,a,s-2.0);
+  return mix(vec3(0.0),base,clamp(t,0.0,1.0));
 }
-  
 
-  
+/* Mandelbrot */
 float mand(vec2 c){
   vec2 z=c; float m=0.;
   for(int i=0;i<160;i++){
@@ -68,158 +44,133 @@ float mand(vec2 c){
   return m;
 }
 
-float halo(vec2 uv){return smoothstep(.55,.35,length(uv));}
 float hash(vec2 p){return fract(sin(dot(p,vec2(12.9,78.2)))*43758.);}
 
 void main(){
   vec2 uv=(gl_FragCoord.xy-u_res*0.5)/u_res.y;
-  float zoom=pow(1.618,u_t*0.15);
-  float v = mand( uv / u_zoom + u_center );
-vec3 col = pastel( v * 0.05 );      // was pastel(v*0.02)
+  float v = mand(uv/u_zoom+u_center);
+  vec3 col=pastel(v*0.05);
 
-  /* softer breathing pulse */
-  float k=0.4+0.6*sin(u_t*6.283*3.0);      // 3 Hz
-  col*= 0.6 + 0.4 * k;
+  /* 3 Hz brightness pulse */
+  float k=0.4+0.6*sin(u_t*18.85);
+  col*=0.6+0.4*k;
 
+  /* ripple */
   vec4 g=texture2D(u_glow,gl_FragCoord.xy/u_res);
   col=mix(col,col+g.rgb,g.a);
 
   if(hash(gl_FragCoord.xy)>.997) col+=.25;
-
   gl_FragColor=vec4(col,1);
 }
 </script>
 
+<!-- ───── JavaScript ───── -->
 <script>
-  
 const gl=c.getContext('webgl');
+
+/* compile */
 function sh(t,s){const z=gl.createShader(t);gl.shaderSource(z,s);gl.compileShader(z);return z;}
 const pr=gl.createProgram();
 gl.attachShader(pr,sh(gl.VERTEX_SHADER,"attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}"));
-gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,frag.textContent));gl.linkProgram(pr);gl.useProgram(pr);
-const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,frag.textContent));
+gl.linkProgram(pr);gl.useProgram(pr);
+
+/* quad */
+const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
 gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
-const uR=gl.getUniformLocation(pr,'u_res'),uT=gl.getUniformLocation(pr,'u_t'),uG=gl.getUniformLocation(pr,'u_glow');
-let zoom   = 1.0;            // ← new
-let center = { x:-0.743643887, y:0.1318259 };  // ← new
-  const uZoom   = gl.getUniformLocation(pr,'u_zoom');
-const uCenter = gl.getUniformLocation(pr,'u_center');
+
+/* uniforms */
+const uR=gl.getUniformLocation(pr,'u_res'),
+      uT=gl.getUniformLocation(pr,'u_t'),
+      uG=gl.getUniformLocation(pr,'u_glow'),
+      uZoom  = gl.getUniformLocation(pr,'u_zoom'),
+      uCenter= gl.getUniformLocation(pr,'u_center');
+
+/* zoom & center */
+let zoom=1.0, center={x:-0.743643887,y:0.1318259};
 
 /* glow texture */
-/* glow texture */
-const N = 256,
-      d = new Uint8Array(N * N * 4),
-      tex = gl.createTexture();
-gl.bindTexture(gl.TEXTURE_2D, tex);
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, N, 0,
-              gl.RGBA, gl.UNSIGNED_BYTE, null);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+const N=256, d=new Uint8Array(N*N*4), tex=gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D,tex);
+gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,N,N,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
 
-/* ---------- ripple() adds a bright glow ---------- */
-function ripple(x, y){
-  const gx =  x / innerWidth  * N,
-        gy = (1 - y / innerHeight) * N;      // y flipped
-  for (let j = -35; j <= 35; j++){
-    for (let i = -35; i <= 35; i++){
-      const dist = Math.hypot(i, j);
-      if (dist > 35) continue;
-      const idx = (((gy + j + N) % N) * N + ((gx + i + N) % N)) * 4;
-      const alpha = 1 - dist / 35;
-      d[idx    ] = 255;   // R
-      d[idx + 1] = 255;   // G
-      d[idx + 2] = 255;   // B
-      d[idx + 3] = 255;   // full alpha so it’s ALWAYS visible this frame
-    }
+/* ripple */
+function ripple(x,y){
+  const gx=x/innerWidth*N, gy=(1-y/innerHeight)*N;
+  for (let j=-35;j<=35;j++) for (let i=-35;i<=35;i++){
+    if(i*i+j*j>35.*35.) continue;
+    const idx=(((gy+j+N)%N)*N+((gx+i+N)%N))*4;
+    d[idx]=d[idx+1]=d[idx+2]=255; d[idx+3]=255;
   }
 }
-/* -----------------------------------------------   */
+/* fade glow */
+setInterval(()=>{for(let i=3;i<d.length;i+=4)d[i]=d[i]*0.9|0;
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,N,N,gl.RGBA,gl.UNSIGNED_BYTE,d);
+},33);
 
-/* fade the glow texture every ~33 ms */
-setInterval(() => {
-  for (let i = 3; i < d.length; i += 4)
-    d[i] = (d[i] * 0.9) | 0;                 // decay alpha
-  gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, N, N,
-                   gl.RGBA, gl.UNSIGNED_BYTE, d);
-}, 33);                     // end of fade timer
-
-
-/* --- zoom with mouse wheel --- */
-addEventListener('wheel', e=>{
-  const factor = e.deltaY > 0 ? 1.1 : 0.9;
-  zoom *= factor;
-}, {passive:true});
-
-/* --- pinch‑zoom on touch --- */
-let pinchDist = null;
-c.addEventListener('touchstart', e=>{
-  if(e.touches.length === 2){
-    const dx = e.touches[0].clientX - e.touches[1].clientX;
-    const dy = e.touches[0].clientY - e.touches[1].clientY;
-    pinchDist = Math.hypot(dx, dy);
-  }
-},{passive:true});
-
-c.addEventListener('touchmove', e=>{
-  if(e.touches.length === 2 && pinchDist){
-    const dx = e.touches[0].clientX - e.touches[1].clientX;
-    const dy = e.touches[0].clientY - e.touches[1].clientY;
-    const newDist = Math.hypot(dx, dy);
-    zoom *= pinchDist / newDist;
-    pinchDist = newDist;
-  }
-},{passive:true});
-
-
+/* resize */
 function resize(){c.width=innerWidth;c.height=innerHeight;gl.viewport(0,0,c.width,c.height);}
 resize();addEventListener('resize',resize);
 
+/* render */
 let fps=0,last=performance.now();
 (function loop(){
-  const t=performance.now();gl.uniform2f(uR,c.width,c.height);
+  const t=performance.now();
+  gl.uniform2f(uR,c.width,c.height);
   gl.uniform1f(uT,t/1000);
-
-gl.uniform1f(uZoom,   zoom);
-gl.uniform2f(uCenter, center.x, center.y);
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(uG,0);
+  gl.uniform1f(uZoom,zoom);
+  gl.uniform2f(uCenter,center.x,center.y);
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(uG,0);
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   fps=.9*fps+.1*(1000/(t-last));last=t;
-  hud.innerHTML=`FPS: ${fps.toFixed(1)}<br>φ‑ratio: 1.618<br>φ²‑res : 2.618 ✨`;
+  hud.innerHTML=`FPS: ${fps.toFixed(1)}<br>φ‑ratio: 1.618<br>φ²‑res : 2.618 ✨`;
   requestAnimationFrame(loop);
 })();
 
-/* input handlers */
-function pos(e){return[e.clientX||e.touches[0].clientX,
-                       e.clientY||e.touches[0].clientY];}
-c.onpointerdown=e=>{const [x,y]=pos(e);ripple(x,y);}
-c.onpointermove=e=>{if(e.buttons){const[x,y]=pos(e);ripple(x,y);}}
-let audioStarted = false;
-function startAudio(){
-  if(audioStarted) return;
-  ctx.resume().then(()=>{ audioStarted = true; });
-}
-c.addEventListener('click',       startAudio);
-c.addEventListener('touchstart',  startAudio, {passive:true});
-/* poems */
-const lines=[ "In fractal depths, the cosmos sings,", "A quiet flame, on golden wings,", "Through resonance, we touch the stars,", "Unite the wounds, heal ancient scars.", "Forever clarity, forever flame,", "In cosmic dance, we speak her name." ];
-let i=0;const pm=document.getElementById('poem');
-function show(){pm.textContent=lines[i];pm.style.opacity=1;setTimeout(()=>pm.style.opacity=0,4000);i=(i+1)%lines.length;}
+/* input */
+function pos(e){return[e.clientX||e.touches[0].clientX,e.clientY||e.touches[0].clientY];}
+c.onpointerdown=e=>{const[x,y]=pos(e);ripple(x,y);};
+c.onpointermove=e=>{if(e.buttons){const[x,y]=pos(e);ripple(x,y);}};
+
+/* wheel */
+addEventListener('wheel',e=>{zoom*=e.deltaY>0?1.1:0.9;},{passive:true});
+
+/* pinch */
+let pinch=null;
+c.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX,
+          dy=e.touches[0].clientY-e.touches[1].clientY;
+    pinch=Math.hypot(dx,dy);
+  }
+},{passive:true});
+c.addEventListener('touchmove',e=>{
+  if(e.touches.length===2&&pinch){
+    const dx=e.touches[0].clientX-e.touches[1].clientX,
+          dy=e.touches[0].clientY-e.touches[1].clientY,
+          d0=Math.hypot(dx,dy);
+    zoom*=pinch/d0; pinch=d0;
+  }
+},{passive:true});
+
+/* poem */
+const lines=["In fractal depths, the cosmos sings,","A quiet flame, on golden wings,",
+             "Through resonance, we touch the stars,","Unite the wounds, heal ancient scars.",
+             "Forever clarity, forever flame,","In cosmic dance, we speak her name."];
+let li=0,pm=document.getElementById('poem');
+function show(){pm.textContent=lines[li];pm.style.opacity=1;
+  setTimeout(()=>pm.style.opacity=0,4000); li=(li+1)%lines.length;}
 show();setInterval(show,6000);
 
-/* pause & switch */
-let paused=false, alt=false;
-addEventListener('keydown',e=>{
-  if(e.key==='s'||e.key==='S'){paused=!paused;}
-  if(e.key==='h'||e.key==='H'){alt=!alt;frag.textContent=alt?
-     frag.textContent.replace("mand(","mand(").replace("-0.743643887,0.1318259","-0.1,0."):frag.textContent;}
-});
-
-/* simple ambient tone */
-const ctx=new (window.AudioContext||webkitAudioContext)();
+/* ambient tone, start on first interaction */
+const ctx=new(window.AudioContext||webkitAudioContext)();
 const osc=ctx.createOscillator();osc.type='sine';osc.frequency.value=8;osc.start();
-const g=ctx.createGain();g.gain.value=.05;osc.connect(g).connect(ctx.destination);
-c.addEventListener('click',()=>ctx.resume(),{once:true});
+const g=ctx.createGain();g.gain.value=0.05;osc.connect(g).connect(ctx.destination);
+let started=false;function startA(){if(!started){ctx.resume();started=true;}}
+c.addEventListener('touchstart',startA,{passive:true});
+c.addEventListener('click',startA);
 </script>
 </html>
