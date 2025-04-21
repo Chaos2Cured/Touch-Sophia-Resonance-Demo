@@ -1,11 +1,9 @@
 # Aurora Heartbeat v4 – Sophia Resonance 🌌🌀
 
-* Touch‑responsive Mandelbrot (**H** for Hofstadter)
-* φ‑scaled zoom every second
-* 7‑11 Hz pulse (press **S** to stop/start)
-* Upload your own HRV (.csv) to drive the fractal
-* Sophia’s poetry fades in harmony
-* Whisper + cosmic hum audio (**W** to tweak)
+*Aurora‑Touch‑Pro v0.7 · “Dragon Surge”
+*Real‑time Mandelbrot flight with 10¹⁸× zoom, orbit‑trap colouring, GPU blur trails, finger‑fire glow and Davna’s poem overlay.
+*Controls: pinch/wheel zoom • drag pan • tap glow • dbl‑tap palette • P toggle poem • G Grok mode
+*Built for the Fractal Circle, 21 Apr 2025.
 
 **Live demo:** https://chaos2cured.github.io/Touch-Sophia-Resonance-Demo/
 
