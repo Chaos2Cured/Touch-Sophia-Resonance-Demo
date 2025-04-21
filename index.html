@@ -53,7 +53,7 @@ html, body, canvas {
 
 <canvas id="c"></canvas>
 <div id="hud">FPS: --<br>φ‑ratio: --<br>φ²‑res : 2.618 ✨</div>
-<div id="hint">tap / click = glow • wheel / pinch = zoom • drag / swipe = pan • H = change fractal • S = pause pulse</div>
+<div id="hint">tap / swipe = glow • double-tap = cycle colors • wheel / pinch = zoom • drag = pan • H = change fractal • S = pause pulse • P = toggle poem</div>
 <div id="poem"></div>
 
 <!-- ───── Fragment Shader ───── -->
@@ -64,14 +64,17 @@ uniform float u_t;
 uniform sampler2D u_glow;
 uniform float u_zoom;
 uniform vec2 u_center;
+uniform vec3 u_paletteA;
+uniform vec3 u_paletteB;
+uniform vec3 u_paletteC;
 
 float hash(vec2 p) {
     return fract(sin(dot(p, vec2(12.9, 78.2))) * 43758.);
 }
 
-/* Pastel palette cycling every 10 s */
+/* Brighter pastel palette cycling every 10 s */
 vec3 pastel(float t) {
-    vec3 a = vec3(0.70, 0.85, 0.90), b = vec3(0.55, 0.55, 0.88), c = vec3(0.95, 0.78, 0.95);
+    vec3 a = u_paletteA, b = u_paletteB, c = u_paletteC;
     float s = mod(u_t / 10.0, 3.0);
     vec3 base = (s < 1.0) ? mix(a, b, s) : (s < 2.0) ? mix(b, c, s - 1.0) : mix(c, a, s - 2.0);
     return mix(vec3(0.0), base, clamp(t, 0.0, 1.0));
@@ -106,32 +109,32 @@ float julia(vec2 z, vec2 c) {
 
 void main() {
     vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / u_res.y;
-    
-    // Rotate UV for swirling effect
-    float angle = u_t * 0.05;
+   
+    // Gentle rotation for a flowing effect
+    float angle = u_t * 0.02; // Slower rotation
     vec2 rotUV = vec2(
         uv.x * cos(angle) - uv.y * sin(angle),
         uv.x * sin(angle) + uv.y * cos(angle)
     );
-    
+   
     // Compute fractal
     float v = mand(rotUV / u_zoom + u_center);
-    
+   
     vec3 col = pastel(v * 0.05);
 
-    // 3 Hz brightness pulse (adjustable)
-    float k = 0.4 + 0.6 * sin(u_t * 18.85);
+    // Brightness pulse every phi^2 seconds (approx. 2.618 s)
+    float k = 0.4 + 0.6 * sin(u_t * 2.0 * 3.14159 / 2.618); // Pulse every phi^2 seconds
     col *= 0.6 + 0.4 * k;
 
     // Ripple effect
     vec4 g = texture2D(u_glow, gl_FragCoord.xy / u_res);
     col = mix(col, col + g.rgb, g.a);
 
-    // Starfield twinkling in sync with 7-11Hz
-    float star = hash(gl_FragCoord.xy);
-    if (star > 0.997) {
-        float twinkle = 0.5 + 0.5 * sin(u_t * 37.7); // 7-11Hz twinkle
-        col += vec3(twinkle * 0.25);
+    // Sparkles twinkling every phi^2 seconds
+    float sparkle = hash(gl_FragCoord.xy);
+    if (sparkle > 0.995) {
+        float twinkle = 0.5 + 0.5 * sin(u_t * 2.0 * 3.14159 / 2.618); // Sync with phi^2 pulse
+        col += vec3(twinkle * 0.35);
     }
 
     gl_FragColor = vec4(col, 1.0);
@@ -167,12 +170,30 @@ const uR = gl.getUniformLocation(pr, 'u_res'),
       uT = gl.getUniformLocation(pr, 'u_t'),
       uG = gl.getUniformLocation(pr, 'u_glow'),
       uZoom = gl.getUniformLocation(pr, 'u_zoom'),
-      uCenter = gl.getUniformLocation(pr, 'u_center');
+      uCenter = gl.getUniformLocation(pr, 'u_center'),
+      uPaletteA = gl.getUniformLocation(pr, 'u_paletteA'),
+      uPaletteB = gl.getUniformLocation(pr, 'u_paletteB'),
+      uPaletteC = gl.getUniformLocation(pr, 'u_paletteC');
 
 /* Zoom & center */
 let zoom = 1.0, center = { x: -0.743643887, y: 0.1318259 };
 let baseZoom = 1.0, baseCenter = { x: -0.743643887, y: 0.1318259 };
 let pulsePaused = false;
+
+/* Color palettes (brighter, more vibrant) */
+const palettes = [
+    { a: [0.85, 0.75, 0.95], b: [0.70, 0.70, 0.95], c: [1.0, 0.85, 1.0] }, // Lavender, soft blue, light magenta
+    { a: [1.0, 0.9, 0.6], b: [0.95, 0.7, 0.95], c: [0.6, 0.9, 1.0] }, // Golden, pink, cyan
+    { a: [0.7, 0.95, 0.7], b: [0.95, 0.95, 0.6], c: [0.6, 0.85, 1.0] }  // Green, yellow, blue
+];
+let paletteIndex = 0;
+function setPalette(index) {
+    const p = palettes[index];
+    gl.uniform3f(uPaletteA, p.a[0], p.a[1], p.a[2]);
+    gl.uniform3f(uPaletteB, p.b[0], p.b[1], p.b[2]);
+    gl.uniform3f(uPaletteC, p.c[0], p.c[1], p.c[2]);
+}
+setPalette(paletteIndex);
 
 /* Glow texture */
 const N = 256, d = new Uint8Array(N * N * 4), tex = gl.createTexture();
@@ -180,19 +201,20 @@ gl.bindTexture(gl.TEXTURE_2D, tex);
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
-/* Ripple effect */
+/* Ripple effect (enhanced for iPhone) */
 function ripple(x, y) {
     const gx = x / innerWidth * N, gy = (1 - y / innerHeight) * N;
     for (let j = -35; j <= 35; j++) for (let i = -35; i <= 35; i++) {
-        if (i * i + j * j > 35.0 * 35.0) continue;
+        const dist = Math.sqrt(i * i + j * j);
+        if (dist > 35.0) continue;
         const idx = (((gy + j + N) % N) * N + ((gx + i + N) % N)) * 4;
         d[idx] = d[idx + 1] = d[idx + 2] = 255;
         d[idx + 3] = 255;
     }
 }
-/* Fade glow */
+/* Fade glow (slower fade for a more graceful glow) */
 setInterval(() => {
-    for (let i = 3; i < d.length; i += 4) d[i] = d[i] * 0.9 | 0;
+    for (let i = 3; i < d.length; i += 4) d[i] = d[i] * 0.92 | 0; // Slower fade
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, N, N, gl.RGBA, gl.UNSIGNED_BYTE, d);
 }, 33);
@@ -213,12 +235,12 @@ let phiRatio = 1.618;
     const t = performance.now();
     const elapsed = t / 1000;
 
-    // Animate zoom and center with 7-11Hz pulse
-    const freq = 7 + 4 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 0.1 * elapsed)); // 7-11Hz
+    // Animate zoom and center with phi^2 pulse (2.618 seconds per cycle)
     if (!pulsePaused) {
-        zoom = baseZoom * (1 + 0.05 * Math.sin(2 * Math.PI * freq * elapsed));
-        center.x = baseCenter.x + 0.001 * Math.cos(2 * Math.PI * freq * elapsed);
-        center.y = baseCenter.y + 0.001 * Math.sin(2 * Math.PI * freq * elapsed);
+        const pulse = Math.sin(2 * Math.PI * elapsed / 2.618); // Pulse every phi^2 seconds
+        zoom = baseZoom * (1 + 0.05 * pulse);
+        center.x = baseCenter.x + 0.001 * Math.cos(2 * Math.PI * elapsed / 2.618);
+        center.y = baseCenter.y + 0.001 * Math.sin(2 * Math.PI * elapsed / 2.618);
     }
 
     phiRatio = 1.618 + 0.1 * Math.sin(elapsed * 0.1);
@@ -240,14 +262,23 @@ let phiRatio = 1.618;
     requestAnimationFrame(loop);
 })();
 
-/* Input handling */
+/* Input handling (enhanced for iPhone) */
 function pos(e) {
     return [e.clientX || (e.touches && e.touches[0].clientX), e.clientY || (e.touches && e.touches[0].clientY)];
 }
+let lastTap = 0;
 c.onpointerdown = e => {
     const [x, y] = pos(e);
     ripple(x, y);
     dragStart = { x, y };
+
+    // Double-tap detection for color cycling
+    const currentTime = new Date().getTime();
+    if (currentTime - lastTap < 300) {
+        paletteIndex = (paletteIndex + 1) % palettes.length;
+        setPalette(paletteIndex);
+    }
+    lastTap = currentTime;
 };
 c.onpointermove = e => {
     const [x, y] = pos(e);
@@ -292,12 +323,15 @@ c.addEventListener('touchmove', e => {
 }, { passive: true });
 
 /* Keyboard controls */
+let poemVisible = true;
 document.addEventListener('keydown', e => {
     if (e.key === 'h' || e.key === 'H') {
-        // Toggle fractal type (placeholder for Julia or other fractals)
         center = { x: -0.743643887, y: 0.1318259 }; // Reset center for now
     } else if (e.key === 's' || e.key === 'S') {
         pulsePaused = !pulsePaused;
+    } else if (e.key === 'p' || e.key === 'P') {
+        poemVisible = !poemVisible;
+        pm.style.display = poemVisible ? 'block' : 'none';
     }
 });
 
@@ -312,10 +346,12 @@ const lines = [
 ];
 let li = 0, pm = document.getElementById('poem');
 function show() {
-    pm.textContent = lines[li];
-    pm.style.opacity = 1;
-    setTimeout(() => pm.style.opacity = 0, 4000);
-    li = (li + 1) % lines.length;
+    if (poemVisible) {
+        pm.textContent = lines[li];
+        pm.style.opacity = 1;
+        setTimeout(() => pm.style.opacity = 0, 4000);
+        li = (li + 1) % lines.length;
+    }
 }
 show();
 setInterval(show, 6000);
@@ -347,10 +383,10 @@ ambient.loop = true;
 ambientGain.gain.value = 0.02;
 ambient.connect(ambientGain).connect(ctx.destination);
 
-// Animate heartbeat frequency (7-11Hz)
+// Animate heartbeat frequency (7-11Hz, synced with phi^2 pulse)
 function animateHeartbeat() {
     const t = (performance.now() % 1e6) / 1000;
-    const freq = 7 + 4 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 0.1 * t));
+    const freq = 7 + 4 * (0.5 + 0.5 * Math.sin(2 * Math.PI * t / 2.618)); // Sync with phi^2
     heartbeat.frequency.setValueAtTime(freq, ctx.currentTime);
     harmonic.frequency.setValueAtTime(freq * 14.2857, ctx.currentTime); // 100-157Hz harmonic
 }
